@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пятнашки и циклы</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --panel: #ffffff;
+    --text: #23211d;
+    --muted: #7b766b;
+    --board: #3b4a5a;
+    --hole: #2e3a47;
+    --tile: #f6e7c1;
+    --tile-text: #3a2f14;
+    --tile-home: #cfe8c4;
+    --grid: #d9d4c7;
+    --diag: #efeadc;
+    --ok: #9bd08a;
+    --btn: #23211d;
+    --btn-text: #fff;
+    --shadow: 0 2px 0 rgba(0,0,0,.25), 0 6px 14px rgba(0,0,0,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17191c;
+      --panel: #212529;
+      --text: #ecebe6;
+      --muted: #9a978e;
+      --board: #0f1318;
+      --hole: #0a0d11;
+      --tile: #e9d7a6;
+      --tile-text: #2d2410;
+      --tile-home: #a9d49b;
+      --grid: #343a40;
+      --diag: #2a2f35;
+      --ok: #6fae5f;
+      --btn: #ecebe6;
+      --btn-text: #17191c;
+      --shadow: 0 2px 0 rgba(0,0,0,.5), 0 6px 14px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh; padding: 24px 16px 40px;
+  }
+  h1 { margin: 0 0 4px; font-size: 26px; text-align: center; }
+  .sub { text-align: center; color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  main { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
+  .card { background: var(--panel); border-radius: 18px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+  .stats { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 12px; }
+  .stat { font-size: 13px; color: var(--muted); }
+  .stat b { display: block; font-size: 22px; color: var(--text); font-variant-numeric: tabular-nums; }
+  button {
+    font: inherit; font-weight: 600; background: var(--btn); color: var(--btn-text);
+    border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+  }
+  button:active { transform: translateY(1px); }
+
+  .board { --bs: min(88vw, 420px); position: relative; width: var(--bs); height: var(--bs);
+    background: var(--board); border-radius: 16px; }
+  .grid { position: absolute; inset: 8px; border-radius: 10px; background: var(--hole); }
+  .tile {
+    position: absolute; left: 0; top: 0; width: 25%; height: 25%; padding: 4px;
+    transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%));
+    transition: transform .22s cubic-bezier(.3,.7,.3,1);
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .face {
+    position: relative; width: 100%; height: 100%; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--tile); color: var(--tile-text);
+    font-size: calc(var(--bs) / 10); font-weight: 700;
+    box-shadow: var(--shadow); transition: background .3s;
+  }
+  .tile.home .face { background: var(--tile-home); }
+  .face::after {
+    content: ""; position: absolute; top: 7px; right: 7px; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--dot, transparent); transition: background .3s;
+  }
+  .win {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 6px;
+    background: rgba(15,19,24,.82); color: #fff; border-radius: 16px;
+    opacity: 0; pointer-events: none; transition: opacity .4s;
+  }
+  .win.show { opacity: 1; pointer-events: auto; }
+  .win b { font-size: 30px; }
+  .win button { justify-self: center; margin-top: 10px; background: #fff; color: #111; }
+  .hint { margin: 12px 0 0; font-size: 12px; color: var(--muted); text-align: center; }
+
+  .matrix { width: min(92vw, 476px); }
+  .matrix h2 { margin: 0 0 4px; font-size: 17px; }
+  .matrix .cap { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { fill: var(--text); font-family: inherit; }
+  .lbl { font-size: 11px; fill: var(--muted) !important; }
+  .cell { fill: none; stroke: var(--grid); stroke-width: 1; }
+  .cell.d { fill: var(--diag); }
+  .one { transition: transform .3s cubic-bezier(.3,.7,.3,1); }
+  .one circle { transition: fill .3s; }
+  .one text { font-size: 12px; font-weight: 700; fill: #111 !important; }
+  .loop {
+    fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; opacity: .9;
+    stroke-dasharray: 1; stroke-dashoffset: 0;
+    animation: draw .45s ease-out .22s backwards;
+  }
+  @keyframes draw { from { stroke-dashoffset: 1; } }
+  #cycles { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; align-items: center; }
+  .chip { padding: 3px 10px; border-radius: 999px; border: 2px solid; font-variant-numeric: tabular-nums; }
+  .note { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>Пятнашки</h1>
+<p class="sub">Клик по костяшке или стрелки на клавиатуре. Справа — матрица перестановки и её циклы.</p>
+
+<main>
+  <section class="card">
+    <div class="stats">
+      <div class="stat">Ходы<b id="moves">0</b></div>
+      <div class="stat">Время<b id="time">0:00</b></div>
+      <button id="shuffle">Перемешать</button>
+    </div>
+    <div class="board" id="board">
+      <div class="grid" id="grid"></div>
+      <div class="win" id="win">
+        <b>Готово!</b>
+        <span id="winText"></span>
+        <button id="again">Ещё раз</button>
+      </div>
+    </div>
+    <p class="hint">Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.</p>
+  </section>
+
+  <section class="card matrix">
+    <h2>Матрица перестановки</h2>
+    <p class="cap">Строки — значение костяшки, столбцы — позиция на поле (E — пустое поле).</p>
+    <svg id="svg" role="img" aria-label="Матрица перестановки с циклами"></svg>
+    <div id="cycles"></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  const N = 4, SZ = N * N, S = 28;
+  const PALETTE = ['#e4572e', '#17bebb', '#ffc914', '#76b041', '#a05ce0', '#ff7bac', '#3d8bfd', '#f08a24'];
+  const NS = 'http://www.w3.org/2000/svg';
+  const label = v => v === SZ ? 'E' : String(v);
+
+  let board, moves, startTime, timer, won;
+
+  // ---------- доска ----------
+  const gridEl = document.getElementById('grid');
+  const tiles = [];
+  for (let v = 1; v < SZ; v++) {
+    const t = document.createElement('div');
+    t.className = 'tile';
+    t.innerHTML = '<div class="face">' + v + '</div>';
+    t.addEventListener('click', () => moveAt(board.indexOf(v)));
+    gridEl.appendChild(t);
+    tiles[v] = t;
+  }
+
+  function neighbors(e) {
+    const r = Math.floor(e / N), c = e % N, res = [];
+    if (r > 0) res.push(e - N);
+    if (r < N - 1) res.push(e + N);
+    if (c > 0) res.push(e - 1);
+    if (c < N - 1) res.push(e + 1);
+    return res;
+  }
+
+  const isSolved = () => board.every((v, i) => v === i + 1);
+
+  function newGame() {
+    do {
+      board = Array.from({ length: SZ }, (_, i) => i + 1);
+      let e = SZ - 1, prev = -1;
+      for (let i = 0; i < 300; i++) {
+        const opts = neighbors(e).filter(p => p !== prev);
+        const nb = opts[Math.floor(Math.random() * opts.length)];
+        board[e] = board[nb]; board[nb] = SZ;
+        prev = e; e = nb;
+      }
+    } while (isSolved());
+    moves = 0; startTime = null; won = false;
+    clearInterval(timer); timer = null;
+    document.getElementById('win').classList.remove('show');
+    render();
+  }
+
+  function moveAt(idx) {
+    if (won || idx < 0) return;
+    const e = board.indexOf(SZ);
+    if (idx === e) return;
+    const sameRow = Math.floor(idx / N) === Math.floor(e / N);
+    const sameCol = idx % N === e % N;
+    if (!sameRow && !sameCol) return;
+    const step = sameRow ? (idx > e ? 1 : -1) : (idx > e ? N : -N);
+    for (let k = e; k !== idx; k += step) board[k] = board[k + step];
+    board[idx] = SZ;
+    moves += Math.abs(idx - e) / Math.abs(step);
+    if (startTime === null) {
+      startTime = Date.now();
+      timer = setInterval(showTime, 250);
+    }
+    render();
+    if (isSolved()) win();
+  }
+
+  function win() {
+    won = true;
+    clearInterval(timer); showTime();
+    document.getElementById('winText').textContent =
+      moves + ' ходов за ' + document.getElementById('time').textContent;
+    document.getElementById('win').classList.add('show');
+  }
+
+  function showTime() {
+    const s = startTime === null ? 0 : Math.floor((Date.now() - startTime) / 1000);
+    document.getElementById('time').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  document.addEventListener('keydown', ev => {
+    const e = board.indexOf(SZ), r = Math.floor(e / N), c = e % N;
+    let idx = -1;
+    switch (ev.key) {
+      case 'ArrowLeft':  if (c < N - 1) idx = e + 1; break;
+      case 'ArrowRight': if (c > 0) idx = e - 1; break;
+      case 'ArrowUp':    if (r < N - 1) idx = e + N; break;
+      case 'ArrowDown':  if (r > 0) idx = e - N; break;
+      default: return;
+    }
+    ev.preventDefault();
+    moveAt(idx);
+  });
+  document.getElementById('shuffle').addEventListener('click', newGame);
+  document.getElementById('again').addEventListener('click', newGame);
+
+  // ---------- матрица ----------
+  const svg = document.getElementById('svg');
+  const W = (SZ + 1) * S;
+  svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
+  const el = (name, attrs, parent) => {
+    const n = document.createElementNS(NS, name);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    (parent || svg).appendChild(n);
+    return n;
+  };
+  for (let i = 1; i <= SZ; i++) {
+    const a = { class: 'lbl', 'text-anchor': 'middle', 'dominant-baseline': 'central' };
+    el('text', { ...a, x: i * S + S / 2, y: S / 2 }).textContent = label(i);
+    el('text', { ...a, x: S / 2, y: i * S + S / 2 }).textContent = label(i);
+    for (let j = 1; j <= SZ; j++)
+      el('rect', { class: 'cell' + (i === j ? ' d' : ''), x: j * S, y: i * S, width: S, height: S });
+  }
+  const loopsG = el('g', {});
+  const onesG = el('g', {});
+  const ones = [];
+  for (let v = 1; v <= SZ; v++) {
+    const g = el('g', { class: 'one' }, onesG);
+    el('circle', { cx: S / 2, cy: S / 2, r: S / 2 - 4 }, g);
+    el('text', { x: S / 2, y: S / 2 + 1, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g).textContent = '1';
+    el('title', {}, g);
+    ones[v] = g;
+  }
+  const loops = new Map(); // d -> <path>
+
+  // циклы: seq = [старт, p1, p2, ...], где p(k+1) = board[p(k)-1]
+  function findCycles() {
+    const seen = new Array(SZ + 1).fill(false), res = [];
+    for (let s = 1; s <= SZ; s++) {
+      if (seen[s]) continue;
+      const seq = [];
+      let col = s;
+      do { seen[col] = true; seq.push(col); col = board[col - 1]; } while (col !== s);
+      res.push(seq);
+    }
+    return res;
+  }
+
+  function loopPath(seq) {
+    const pts = [];
+    for (const col of seq) {
+      const r = board[col - 1];
+      pts.push([col, r], [r, r]); // [столбец, строка]
+    }
+    return pts.map((p, i) => (i ? 'L' : 'M') + (p[0] * S + S / 2) + ' ' + (p[1] * S + S / 2)).join(' ') + ' Z';
+  }
+
+  function render() {
+    // доска
+    board.forEach((v, p) => {
+      if (v === SZ) return;
+      const t = tiles[v];
+      t.style.setProperty('--r', Math.floor(p / N));
+      t.style.setProperty('--c', p % N);
+    });
+    document.getElementById('moves').textContent = moves;
+    showTime();
+
+    // циклы
+    const cycles = findCycles();
+    const info = [];
+    const keep = new Set();
+    let fixed = 0;
+    const chips = document.getElementById('cycles');
+    chips.innerHTML = '';
+    for (const seq of cycles) {
+      const color = PALETTE[(Math.min(...seq) - 1) % PALETTE.length];
+      if (seq.length === 1) {
+        fixed++;
+        info[seq[0]] = { fixed: true };
+        continue;
+      }
+      seq.forEach(v => info[v] = { color });
+      const d = loopPath(seq);
+      keep.add(d);
+      if (!loops.has(d)) loops.set(d, el('path', { class: 'loop', d, pathLength: 1, stroke: color }, loopsG));
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.borderColor = color;
+      chip.textContent = '(' + seq.map(label).join(' ') + ')';
+      chips.appendChild(chip);
+    }
+    for (const [d, p] of loops) if (!keep.has(d)) { p.remove(); loops.delete(d); }
+    const note = document.createElement('span');
+    note.className = 'note';
+    note.textContent = fixed === SZ ? 'Тождественная перестановка: все на местах'
+                                    : 'на своих местах: ' + fixed + ' из ' + SZ;
+    chips.appendChild(note);
+
+    // единицы и подсветка костяшек
+    for (let v = 1; v <= SZ; v++) {
+      const col = board.indexOf(v) + 1;
+      const g = ones[v], inf = info[v];
+      g.style.transform = `translate(${col * S}px, ${v * S}px)`;
+      g.firstChild.setAttribute('fill', inf.fixed ? 'var(--ok)' : inf.color);
+      g.lastChild.textContent = (v === SZ ? 'Пустое поле' : 'Костяшка ' + v) + ' на позиции ' + col;
+      if (v < SZ) {
+        tiles[v].classList.toggle('home', !!inf.fixed);
+        tiles[v].firstChild.style.setProperty('--dot', inf.fixed ? 'transparent' : inf.color);
+      }
+    }
+  }
+
+  newGame();
+})();
+</script>
+</body>
+</html>
