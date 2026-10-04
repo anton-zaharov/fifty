@@ -135,6 +135,10 @@
   @keyframes draw { from { stroke-dashoffset: 1; } }
   .loop polygon { stroke: var(--panel); stroke-width: 1; stroke-linejoin: round; animation: pop .15s backwards; }
   @keyframes pop { from { opacity: 0; } }
+  .how { max-width: 964px; margin: 28px auto 0; font-size: 14px; line-height: 1.6; }
+  .how h2 { margin: 0 0 10px; font-size: 17px; }
+  .how p { margin: 0 0 10px; }
+  .how p:last-child { margin-bottom: 0; }
   .tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
   .tools button { padding: 6px 12px; font-size: 13px; }
   #parity { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--grid); font-size: 14px; line-height: 1.5; }
@@ -188,6 +192,12 @@
   </section>
 </main>
 
+<section class="card how">
+  <h2 data-i18n="howTitle"></h2>
+  <p data-i18n="howP1"></p>
+  <p data-i18n="howP2"></p>
+</section>
+
 <script>
 (function () {
   const N = 4, SZ = N * N, S = 28;
@@ -211,18 +221,20 @@
       solve: 'Расставить по местам', free: 'Свободная замена',
       hintNormal: 'Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.',
       hintFree: 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Ходы и время не считаются.',
-      matrixTitle: 'Матрица перестановки',
+      matrixTitle: 'Матрица перестановок',
       replay: '▶ Трассировка', replayTip: 'Заново пройти по контурам циклов отрезок за отрезком',
       cap: 'Строки — значение костяшки, столбцы — позиция на поле, [E] — пустое поле. Ход — это сдвиг костяшки по горизонтали или по вертикали. На матрице перестановок сдвиг по горизонтали означает обмен столбца [E] с соседним справа/слева столбцом, сдвиг по вертикали - обмен [E] с 4-ым справа/слева столбцом. Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.',
       svgLabel: 'Матрица перестановки с циклами',
+      howTitle: 'Как на матрице отрисовывается поиск цикла.',
+      howP1: 'Сначала смотрим на первый столбец и находим строку с единицей, по горизонтали движемся к диагональному элементу для этой строки, упираемся в него и продолжаем линию вверх или вниз к единице и так далее.',
+      howP2: 'Выражаясь языком алгебры мы берем первый элемент и идем к позиции на которой он должен стоять, смотрим значение элемента на этой позиции и идем к позиции на которой он должен стоять и так далее...',
       tipSel: n => 'Выбрана позиция ' + n,
       tipE: 'Столбец пустого поля E',
       tipMove: (horiz, p, e) => (horiz ? 'Горизонтальный ход' : 'Вертикальный ход') + ': обмен столбцов ' + p + ' и ' + e + ' (E)',
       oneTitle: (isE, v, col) => (isE ? 'Пустое поле' : 'Костяшка ' + v) + ' на позиции ' + col,
-      noteIdentity: 'Тождественная перестановка: все на местах',
-      noteFixed: (f, n) => 'на своих местах: ' + f + ' из ' + n,
-      pCycles: (c, k) => 'Циклов: <b>' + c + '</b> (длина &gt; 1: <b>' + k + '</b>)',
-      pTransp: (t, n, c) => 'Транспозиций (минимум): <b>' + t + '</b> = ' + n + ' − ' + c,
+      noteFixed: f => 'на своих местах: ' + f,
+      pCycles: c => 'Циклов: <b>' + c + '</b>',
+      pTransp: (t, parts) => 'Транспозиций (минимум): <b>' + t + '</b>' + (parts.length > 1 ? ' = ' + parts.join(' + ') : ''),
       pParity: even => 'Чётность: <b>' + (even ? 'чётная' : 'нечётная') + '</b>',
       pInv: inv => 'Инверсий (без E): <b>' + inv + '</b>',
       pSolv: ok => 'Собирается обычными ходами: <b>' + (ok ? 'да' : 'нет') + '</b>'
@@ -237,18 +249,20 @@
       solve: 'Put in order', free: 'Free swap',
       hintNormal: 'You can click a far tile in the row — the whole chain will slide.',
       hintFree: 'Free swap: click any two squares (including the empty one, or matrix columns) to swap them. Moves and time are not counted.',
-      matrixTitle: 'Permutation matrix',
+      matrixTitle: 'Permutations matrix',
       replay: '▶ Trace', replayTip: 'Replay the cycle outlines segment by segment',
       cap: 'Rows are tile values, columns are board positions, [E] is the empty square. A move is a tile sliding horizontally or vertically. On the permutation matrix, a horizontal slide means swapping the [E] column with the adjacent column to the right/left; a vertical slide means swapping [E] with the 4th column to the right/left. The columns allowed for a move are highlighted. Click a highlighted column to make the move.',
       svgLabel: 'Permutation matrix with cycles',
+      howTitle: 'How the cycle search is drawn on the matrix.',
+      howP1: 'First we look at the first column and find the row with the one. We move horizontally to the diagonal element of that row, run into it, and continue the line up or down to a one, and so on.',
+      howP2: 'In algebraic terms, we take the first element and go to the position where it should stand, look at the value of the element at that position, go to the position where that element should stand, and so on...',
       tipSel: n => 'Position ' + n + ' selected',
       tipE: 'Column of the empty square E',
       tipMove: (horiz, p, e) => (horiz ? 'Horizontal move' : 'Vertical move') + ': swap columns ' + p + ' and ' + e + ' (E)',
       oneTitle: (isE, v, col) => (isE ? 'Empty square' : 'Tile ' + v) + ' at position ' + col,
-      noteIdentity: 'Identity permutation: everything is in place',
-      noteFixed: (f, n) => 'in place: ' + f + ' of ' + n,
-      pCycles: (c, k) => 'Cycles: <b>' + c + '</b> (length &gt; 1: <b>' + k + '</b>)',
-      pTransp: (t, n, c) => 'Transpositions (minimum): <b>' + t + '</b> = ' + n + ' − ' + c,
+      noteFixed: f => 'in place: ' + f,
+      pCycles: c => 'Cycles: <b>' + c + '</b>',
+      pTransp: (t, parts) => 'Transpositions (minimum): <b>' + t + '</b>' + (parts.length > 1 ? ' = ' + parts.join(' + ') : ''),
       pParity: even => 'Parity: <b>' + (even ? 'even' : 'odd') + '</b>',
       pInv: inv => 'Inversions (excluding E): <b>' + inv + '</b>',
       pSolv: ok => 'Solvable with regular moves: <b>' + (ok ? 'yes' : 'no') + '</b>'
@@ -453,21 +467,31 @@
     return pts.map(p => [p[0] * S + S / 2, p[1] * S + S / 2]);
   }
 
-  const STEP = 0.1; // секунд на один отрезок
+  const GAME_DRAW = 0.25; // в игре все отрезки всех циклов рисуются одновременно за столько секунд
+  const TRACE_STEP = 0.5; // секунд на один отрезок в режиме трассировки (кнопка)
+  let tracing = false;   // true только пока кнопка «Трассировка» перестраивает контуры
+  let traceT = 0;        // момент (с), с которого начнёт рисоваться следующий цикл: циклы идут строго по очереди
+
   function buildLoop(pts, color) {
+    const seg = tracing ? TRACE_STEP : GAME_DRAW;
+    const t0 = tracing ? traceT : 0.25; // в игре ждём, пока единицы доедут до своих мест
     const g = el('g', { class: 'loop' }, loopsG);
     pts.forEach((a, i) => {
       const b = pts[(i + 1) % pts.length];
+      // трассировка: отрезок i начинается, когда закончился отрезок i-1; в игре все стартуют вместе
+      const start = tracing ? t0 + i * seg : t0;
       const ln = el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], pathLength: 1, stroke: color }, g);
-      ln.style.animationDelay = (0.25 + i * STEP) + 's';
-      // стрелка посередине отрезка, по направлению обхода
+      ln.style.animationDuration = seg + 's';
+      ln.style.animationDelay = start + 's';
+      // стрелка посередине отрезка, по направлению обхода; появляется, когда отрезок дорисован
       const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
       const ar = el('polygon', {
         points: '6,0 -4,-5 -4,5', fill: color,
         transform: `translate(${(a[0] + b[0]) / 2} ${(a[1] + b[1]) / 2}) rotate(${ang})`
       }, g);
-      ar.style.animationDelay = (0.25 + i * STEP + 0.06) + 's';
+      ar.style.animationDelay = (start + seg * 0.6) + 's';
     });
+    if (tracing) traceT = t0 + pts.length * seg; // следующий цикл стартует после конца этого
     return g;
   }
 
@@ -501,7 +525,9 @@
   document.getElementById('replay').addEventListener('click', () => {
     for (const g of loops.values()) g.remove();
     loops.clear();
+    tracing = true; traceT = 0.2;
     render();
+    tracing = false;
   });
 
   function render() {
@@ -550,10 +576,10 @@
     for (const [d, p] of loops) if (!keep.has(d)) { p.remove(); loops.delete(d); }
     const note = document.createElement('span');
     note.className = 'note';
-    note.textContent = fixed === SZ ? t('noteIdentity') : t('noteFixed', fixed, SZ);
+    note.textContent = t('noteFixed', fixed);
     chips.appendChild(note);
 
-    // минимальное число транспозиций = n - (число циклов, включая неподвижные точки)
+    // минимальное число транспозиций = сумма (длина цикла − 1); циклы длины 1 (на своих местах) не считаются
     // инверсии: пары костяшек, где большая стоит левее меньшей; E не учитывается
     const tl = board.filter(v => v !== SZ);
     let inv = 0;
@@ -562,10 +588,11 @@
     // для поля 4×4 сборка возможна, если инверсии + номер ряда E снизу нечётны
     const rowFromBottom = N - Math.floor(board.indexOf(SZ) / N);
     const solvable = (inv + rowFromBottom) % 2 === 1;
-    const transp = SZ - cycles.length;
+    const parts = cycles.filter(s => s.length > 1).map(s => s.length - 1);
+    const transp = parts.reduce((a, b) => a + b, 0);
     document.getElementById('parity').innerHTML =
-      [t('pCycles', cycles.length, cycles.length - fixed),
-       t('pTransp', transp, SZ, cycles.length),
+      [t('pCycles', parts.length),
+       t('pTransp', transp, parts),
        t('pParity', transp % 2 === 0),
        t('pInv', inv),
        t('pSolv', solvable)].join('<br>');
