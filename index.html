@@ -47,6 +47,11 @@
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     min-height: 100vh; padding: 24px 16px 40px;
   }
+  .langbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: var(--muted); }
+  .langbar select {
+    font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--grid);
+    border-radius: 8px; padding: 5px 8px; cursor: pointer;
+  }
   h1 { margin: 0 0 4px; font-size: 26px; text-align: center; }
   .sub { text-align: center; color: var(--muted); margin: 0 0 24px; font-size: 14px; }
   main { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
@@ -138,39 +143,45 @@
 </style>
 </head>
 <body>
-<h1>Пятнашки</h1>
-<p class="sub">Клик по костяшке или стрелки на клавиатуре. Справа — матрица перестановки и циклы перестановок.</p>
+<div class="langbar">
+  <label for="lang">Language</label>
+  <select id="lang">
+    <option value="ru">Русский</option>
+    <option value="en">English</option>
+  </select>
+</div>
+<h1 data-i18n="title"></h1>
+<p class="sub" data-i18n="sub"></p>
 
 <main>
   <section class="card">
     <div class="stats">
-      <div class="stat">Ходы<b id="moves">0</b></div>
-      <div class="stat">Время<b id="time">0:00</b></div>
-      <button id="shuffle">Перемешать</button>
+      <div class="stat"><span data-i18n="moves"></span><b id="moves">0</b></div>
+      <div class="stat"><span data-i18n="time"></span><b id="time">0:00</b></div>
+      <button id="shuffle" data-i18n="shuffle"></button>
     </div>
     <div class="board" id="board">
       <div class="grid" id="grid"></div>
       <div class="win" id="win">
-        <b>Готово!</b>
+        <b data-i18n="winTitle"></b>
         <span id="winText"></span>
-        <button id="again">Ещё раз</button>
+        <button id="again" data-i18n="again"></button>
       </div>
     </div>
     <div class="modes">
-      <button id="solve" class="secondary">Расставить по местам</button>
-      <label class="switch"><input type="checkbox" id="free"> Свободная замена</label>
+      <button id="solve" class="secondary" data-i18n="solve"></button>
+      <label class="switch"><input type="checkbox" id="free"> <span data-i18n="free"></span></label>
     </div>
     <p class="hint" id="hint"></p>
   </section>
 
   <section class="card matrix">
     <div class="tools">
-      <h2>Матрица перестановки</h2>
-      <button id="replay" title="Заново пройти по контурам циклов отрезок за отрезком">▶ Трассировка</button>
+      <h2 data-i18n="matrixTitle"></h2>
+      <button id="replay" data-i18n="replay" data-i18n-title="replayTip"></button>
     </div>
-    <p class="cap">Строки — значение костяшки, столбцы — позиция на поле (E — пустое поле). Ход — это обмен столбца E с другим: по горизонтали - с соседним столбцом, по вертикали - с 4-ым справа/слева. 
-        Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.</p>
-    <svg id="svg" role="img" aria-label="Матрица перестановки с циклами"></svg>
+    <p class="cap" data-i18n="cap"></p>
+    <svg id="svg" role="img" data-i18n-aria="svgLabel"></svg>
     <div id="cycles"></div>
     <div id="parity"></div>
   </section>
@@ -182,6 +193,72 @@
   const PALETTE = ['#e4572e', '#17bebb', '#ffc914', '#76b041', '#a05ce0', '#ff7bac', '#3d8bfd', '#f08a24'];
   const NS = 'http://www.w3.org/2000/svg';
   const label = v => v === SZ ? 'E' : String(v);
+
+  // ---------- интернационализация (ru / en) ----------
+  const ruPlural = (n, one, few, many) => {
+    const m10 = n % 10, m100 = n % 100;
+    return m10 === 1 && m100 !== 11 ? one : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many);
+  };
+  const I18N = {
+    ru: {
+      docTitle: 'Пятнашки и циклы',
+      title: 'Пятнашки',
+      sub: 'Клик по костяшке или стрелки на клавиатуре. Справа — матрица перестановки и циклы перестановок.',
+      moves: 'Ходы', time: 'Время', shuffle: 'Перемешать',
+      winTitle: 'Готово!', again: 'Ещё раз',
+      winText: (m, time) => m + ' ' + ruPlural(m, 'ход', 'хода', 'ходов') + ' за ' + time,
+      solve: 'Расставить по местам', free: 'Свободная замена',
+      hintNormal: 'Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.',
+      hintFree: 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Ходы и время не считаются.',
+      matrixTitle: 'Матрица перестановки',
+      replay: '▶ Трассировка', replayTip: 'Заново пройти по контурам циклов отрезок за отрезком',
+      cap: 'Строки — значение костяшки, столбцы — позиция на поле (E — пустое поле). Ход — это обмен столбца E с другим: по горизонтали - с соседним столбцом, по вертикали - с 4-ым справа/слева. Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.',
+      svgLabel: 'Матрица перестановки с циклами',
+      tipSel: n => 'Выбрана позиция ' + n,
+      tipE: 'Столбец пустого поля E',
+      tipMove: (horiz, p, e) => (horiz ? 'Горизонтальный ход' : 'Вертикальный ход') + ': обмен столбцов ' + p + ' и ' + e + ' (E)',
+      oneTitle: (isE, v, col) => (isE ? 'Пустое поле' : 'Костяшка ' + v) + ' на позиции ' + col,
+      noteIdentity: 'Тождественная перестановка: все на местах',
+      noteFixed: (f, n) => 'на своих местах: ' + f + ' из ' + n,
+      pCycles: (c, k) => 'Циклов: <b>' + c + '</b> (длина &gt; 1: <b>' + k + '</b>)',
+      pTransp: (t, n, c) => 'Транспозиций (минимум): <b>' + t + '</b> = ' + n + ' − ' + c,
+      pParity: even => 'Чётность: <b>' + (even ? 'чётная' : 'нечётная') + '</b>',
+      pInv: inv => 'Инверсий (без E): <b>' + inv + '</b>',
+      pSolv: ok => 'Собирается обычными ходами: <b>' + (ok ? 'да' : 'нет') + '</b>'
+    },
+    en: {
+      docTitle: 'Fifteen Puzzle & Cycles',
+      title: 'Fifteen Puzzle',
+      sub: 'Click a tile or use the arrow keys. On the right: the permutation matrix and its cycles.',
+      moves: 'Moves', time: 'Time', shuffle: 'Shuffle',
+      winTitle: 'Solved!', again: 'Play again',
+      winText: (m, time) => m + (m === 1 ? ' move' : ' moves') + ' in ' + time,
+      solve: 'Put in order', free: 'Free swap',
+      hintNormal: 'You can click a far tile in the row — the whole chain will slide.',
+      hintFree: 'Free swap: click any two squares (including the empty one, or matrix columns) to swap them. Moves and time are not counted.',
+      matrixTitle: 'Permutation matrix',
+      replay: '▶ Trace', replayTip: 'Replay the cycle outlines segment by segment',
+      cap: 'Rows are tile values, columns are board positions (E is the empty square). A move swaps the E column with another one: horizontally with the adjacent column, vertically with the 4th column to the right/left. The columns allowed for a move are highlighted. Click a highlighted column to make the move.',
+      svgLabel: 'Permutation matrix with cycles',
+      tipSel: n => 'Position ' + n + ' selected',
+      tipE: 'Column of the empty square E',
+      tipMove: (horiz, p, e) => (horiz ? 'Horizontal move' : 'Vertical move') + ': swap columns ' + p + ' and ' + e + ' (E)',
+      oneTitle: (isE, v, col) => (isE ? 'Empty square' : 'Tile ' + v) + ' at position ' + col,
+      noteIdentity: 'Identity permutation: everything is in place',
+      noteFixed: (f, n) => 'in place: ' + f + ' of ' + n,
+      pCycles: (c, k) => 'Cycles: <b>' + c + '</b> (length &gt; 1: <b>' + k + '</b>)',
+      pTransp: (t, n, c) => 'Transpositions (minimum): <b>' + t + '</b> = ' + n + ' − ' + c,
+      pParity: even => 'Parity: <b>' + (even ? 'even' : 'odd') + '</b>',
+      pInv: inv => 'Inversions (excluding E): <b>' + inv + '</b>',
+      pSolv: ok => 'Solvable with regular moves: <b>' + (ok ? 'yes' : 'no') + '</b>'
+    }
+  };
+  const storedLang = (() => { try { return localStorage.getItem('lang'); } catch (e) { return null; } })();
+  let lang = I18N[storedLang] ? storedLang : (/^ru/i.test(navigator.language || '') ? 'ru' : 'en');
+  const t = (key, ...args) => {
+    const v = I18N[lang][key];
+    return typeof v === 'function' ? v(...args) : v;
+  };
 
   let board, moves, startTime, timer, won;
   let free = false;  // режим произвольной замены
@@ -225,10 +302,11 @@
     free = on; sel = null;
     document.getElementById('free').checked = on;
     document.getElementById('board').classList.toggle('free', on);
-    document.getElementById('hint').textContent = on
-      ? 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Ходы и время не считаются.'
-      : 'Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.';
+    updateHint();
     render();
+  }
+  function updateHint() {
+    document.getElementById('hint').textContent = t(free ? 'hintFree' : 'hintNormal');
   }
   function solve() {
     board = Array.from({ length: SZ }, (_, i) => i + 1);
@@ -291,9 +369,11 @@
     won = true;
     renderHighlights();
     clearInterval(timer); showTime();
-    document.getElementById('winText').textContent =
-      moves + ' ходов за ' + document.getElementById('time').textContent;
+    setWinText();
     document.getElementById('win').classList.add('show');
+  }
+  function setWinText() {
+    document.getElementById('winText').textContent = t('winText', moves, document.getElementById('time').textContent);
   }
 
   function showTime() {
@@ -396,16 +476,12 @@
     if (won) return;
     const e = board.indexOf(SZ);
     if (free) {
-      if (sel !== null && sel !== e) band(sel, 'hl', 'Выбрана позиция ' + (sel + 1));
-      band(e, 'hl-e', 'Столбец пустого поля E');
+      if (sel !== null && sel !== e) band(sel, 'hl', t('tipSel', sel + 1));
+      band(e, 'hl-e', t('tipE'));
       return;
     }
-    band(e, 'hl-e', 'Столбец пустого поля E');
-    for (const p of neighbors(e)) {
-      const horiz = Math.abs(p - e) === 1;
-      band(p, 'hl', (horiz ? 'Горизонтальный ход' : 'Вертикальный ход') +
-        ': обмен столбцов ' + (p + 1) + ' и ' + (e + 1) + ' (E)');
-    }
+    band(e, 'hl-e', t('tipE'));
+    for (const p of neighbors(e)) band(p, 'hl', t('tipMove', Math.abs(p - e) === 1, p + 1, e + 1));
   }
   function band(p, cls, tip) {
     const g = el('g', { class: cls }, hlG);
@@ -473,8 +549,7 @@
     for (const [d, p] of loops) if (!keep.has(d)) { p.remove(); loops.delete(d); }
     const note = document.createElement('span');
     note.className = 'note';
-    note.textContent = fixed === SZ ? 'Тождественная перестановка: все на местах'
-                                    : 'на своих местах: ' + fixed + ' из ' + SZ;
+    note.textContent = fixed === SZ ? t('noteIdentity') : t('noteFixed', fixed, SZ);
     chips.appendChild(note);
 
     // минимальное число транспозиций = n - (число циклов, включая неподвижные точки)
@@ -486,13 +561,13 @@
     // для поля 4×4 сборка возможна, если инверсии + номер ряда E снизу нечётны
     const rowFromBottom = N - Math.floor(board.indexOf(SZ) / N);
     const solvable = (inv + rowFromBottom) % 2 === 1;
-    const t = SZ - cycles.length;
+    const transp = SZ - cycles.length;
     document.getElementById('parity').innerHTML =
-      'Циклов: <b>' + cycles.length + '</b> (длина &gt; 1: <b>' + (cycles.length - fixed) + '</b>)<br>' +
-      'Транспозиций (минимум): <b>' + t + '</b> = ' + SZ + ' − ' + cycles.length + '<br>' +
-      'Чётность: <b>' + (t % 2 === 0 ? 'чётная' : 'нечётная') + '</b><br>' +
-      'Инверсий (без E): <b>' + inv + '</b><br>' +
-      'Собирается обычными ходами: <b>' + (solvable ? 'да' : 'нет') + '</b>';
+      [t('pCycles', cycles.length, cycles.length - fixed),
+       t('pTransp', transp, SZ, cycles.length),
+       t('pParity', transp % 2 === 0),
+       t('pInv', inv),
+       t('pSolv', solvable)].join('<br>');
 
     // единицы и подсветка костяшек
     for (let v = 1; v <= SZ; v++) {
@@ -502,7 +577,7 @@
       const clr = inf.fixed ? 'var(--ok)' : inf.color;
       if (v === SZ) g.firstChild.setAttribute('stroke', clr); // пустое поле: только рамка
       else g.firstChild.setAttribute('fill', clr);
-      g.lastChild.textContent = (v === SZ ? 'Пустое поле' : 'Костяшка ' + v) + ' на позиции ' + col;
+      g.lastChild.textContent = t('oneTitle', v === SZ, v, col);
       if (v < SZ) {
         tiles[v].classList.toggle('home', !!inf.fixed);
         tiles[v].firstChild.style.setProperty('--dot', inf.fixed ? 'transparent' : inf.color);
@@ -510,8 +585,27 @@
     }
   }
 
+  // применить язык к статическим элементам, затем перерисовать динамические строки
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.title = t('docTitle');
+    document.querySelectorAll('[data-i18n]').forEach(n => { n.textContent = t(n.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-title]').forEach(n => { n.title = t(n.dataset.i18nTitle); });
+    document.querySelectorAll('[data-i18n-aria]').forEach(n => { n.setAttribute('aria-label', t(n.dataset.i18nAria)); });
+    document.getElementById('lang').value = lang;
+    updateHint();
+    if (won) setWinText();
+    render();
+  }
+  document.getElementById('lang').addEventListener('change', ev => {
+    lang = ev.target.value;
+    try { localStorage.setItem('lang', lang); } catch (e) { /* хранилище недоступно — не страшно */ }
+    applyLang();
+  });
+
   newGame();
   setFree(false);
+  applyLang();
 })();
 </script>
 </body>
