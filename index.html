@@ -6,6 +6,7 @@
 <title>Пятнашки и циклы</title>
 <style>
   :root {
+    --bs: min(calc(100vw - 72px), 420px); /* сторона доски: 72px = поля страницы + padding карточки */
     --bg: #f4f1ea;
     --panel: #ffffff;
     --text: #23211d;
@@ -53,7 +54,7 @@
     border-radius: 8px; padding: 5px 8px; cursor: pointer;
   }
   h1 { margin: 0 0 4px; font-size: 26px; text-align: center; }
-  .sub { text-align: center; color: var(--muted); margin: 0 0 24px; font-size: 14px; }
+  .sub { text-align: center; color: var(--muted); margin: 0 auto 24px; max-width: 900px; font-size: 14px; line-height: 1.5; }
   main { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
   .card { background: var(--panel); border-radius: 18px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 
@@ -66,7 +67,8 @@
   }
   button:active { transform: translateY(1px); }
 
-  .board { --bs: min(88vw, 420px); position: relative; width: var(--bs); height: var(--bs);
+  .game { width: calc(var(--bs) + 40px); } /* ширина карточки задана размером доски, а не длиной текста подсказки */
+  .board { position: relative; width: var(--bs); height: var(--bs);
     background: var(--board); border-radius: 16px; }
   .grid { position: absolute; inset: 8px; border-radius: 10px; background: var(--hole); }
   .tile {
@@ -106,11 +108,11 @@
   }
   .selbox.on { opacity: 1; }
   .selbox i { display: block; width: 100%; height: 100%; border: 3px solid #f2b705; border-radius: 10px; }
-  .hint { margin: 12px 0 0; font-size: 12px; color: var(--muted); text-align: center; }
+  .hint { margin: 12px 0 0; font-size: 12px; line-height: 1.4; min-height: 4.2em; /* 3 строки: высота не прыгает при смене режима */
+    color: var(--muted); text-align: center; }
 
   .matrix { width: min(92vw, 476px); }
   .matrix h2 { margin: 0 0 4px; font-size: 17px; }
-  .matrix .cap { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
   svg { display: block; width: 100%; height: auto; }
   svg text { fill: var(--text); font-family: inherit; }
   .lbl { font-size: 11px; fill: var(--muted) !important; }
@@ -151,10 +153,10 @@
   </select>
 </div>
 <h1 data-i18n="title"></h1>
-<p class="sub" data-i18n="sub"></p>
+<p class="sub"><span data-i18n="sub"></span> <span data-i18n="cap"></span></p>
 
 <main>
-  <section class="card">
+  <section class="card game">
     <div class="stats">
       <div class="stat"><span data-i18n="moves"></span><b id="moves">0</b></div>
       <div class="stat"><span data-i18n="time"></span><b id="time">0:00</b></div>
@@ -180,7 +182,6 @@
       <h2 data-i18n="matrixTitle"></h2>
       <button id="replay" data-i18n="replay" data-i18n-title="replayTip"></button>
     </div>
-    <p class="cap" data-i18n="cap"></p>
     <svg id="svg" role="img" data-i18n-aria="svgLabel"></svg>
     <div id="cycles"></div>
     <div id="parity"></div>
@@ -212,7 +213,7 @@
       hintFree: 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Ходы и время не считаются.',
       matrixTitle: 'Матрица перестановки',
       replay: '▶ Трассировка', replayTip: 'Заново пройти по контурам циклов отрезок за отрезком',
-      cap: 'Строки — значение костяшки, столбцы — позиция на поле (E — пустое поле). Ход — это обмен столбца E с другим: по горизонтали - с соседним столбцом, по вертикали - с 4-ым справа/слева. Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.',
+      cap: 'Строки — значение костяшки, столбцы — позиция на поле, [E] — пустое поле. Ход — это сдвиг костяшки по горизонтали или по вертикали. На матрице перестановок сдвиг по горизонтали означает обмен столбца [E] с соседним справа/слева столбцом, сдвиг по вертикали - обмен [E] с 4-ым справа/слева столбцом. Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.',
       svgLabel: 'Матрица перестановки с циклами',
       tipSel: n => 'Выбрана позиция ' + n,
       tipE: 'Столбец пустого поля E',
@@ -238,7 +239,7 @@
       hintFree: 'Free swap: click any two squares (including the empty one, or matrix columns) to swap them. Moves and time are not counted.',
       matrixTitle: 'Permutation matrix',
       replay: '▶ Trace', replayTip: 'Replay the cycle outlines segment by segment',
-      cap: 'Rows are tile values, columns are board positions (E is the empty square). A move swaps the E column with another one: horizontally with the adjacent column, vertically with the 4th column to the right/left. The columns allowed for a move are highlighted. Click a highlighted column to make the move.',
+      cap: 'Rows are tile values, columns are board positions, [E] is the empty square. A move is a tile sliding horizontally or vertically. On the permutation matrix, a horizontal slide means swapping the [E] column with the adjacent column to the right/left; a vertical slide means swapping [E] with the 4th column to the right/left. The columns allowed for a move are highlighted. Click a highlighted column to make the move.',
       svgLabel: 'Permutation matrix with cycles',
       tipSel: n => 'Position ' + n + ' selected',
       tipE: 'Column of the empty square E',
