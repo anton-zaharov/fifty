@@ -90,6 +90,17 @@
   .win.show { opacity: 1; pointer-events: auto; }
   .win b { font-size: 30px; }
   .win button { justify-self: center; margin-top: 10px; background: #fff; color: #111; }
+  .modes { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  button.secondary { background: transparent; color: var(--text); border: 2px solid var(--text); padding: 8px 14px; }
+  .switch { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; }
+  .switch input { width: 18px; height: 18px; accent-color: #f2b705; cursor: pointer; }
+  .board.free { outline: 3px dashed #f2b705; outline-offset: 4px; }
+  .selbox {
+    position: absolute; left: 0; top: 0; width: 25%; height: 25%; padding: 4px; pointer-events: none;
+    transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%)); opacity: 0; transition: opacity .15s;
+  }
+  .selbox.on { opacity: 1; }
+  .selbox i { display: block; width: 100%; height: 100%; border: 3px solid #f2b705; border-radius: 10px; }
   .hint { margin: 12px 0 0; font-size: 12px; color: var(--muted); text-align: center; }
 
   .matrix { width: min(92vw, 476px); }
@@ -100,15 +111,27 @@
   .lbl { font-size: 11px; fill: var(--muted) !important; }
   .cell { fill: none; stroke: var(--grid); stroke-width: 1; }
   .cell.d { fill: var(--diag); }
+  .hl rect { fill: #f2b705; opacity: .22; animation: fade .3s; }
+  .hl rect:first-child { opacity: .5; }
+  .hl-e rect { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  @keyframes fade { from { opacity: 0; } }
   .one { transition: transform .3s cubic-bezier(.3,.7,.3,1); }
-  .one circle { transition: fill .3s; }
+  .one circle, .one rect { transition: fill .3s; }
   .one text { font-size: 12px; font-weight: 700; fill: #111 !important; }
-  .loop {
-    fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; opacity: .9;
+  .one rect { fill: none; stroke-width: 2.5; transition: stroke .3s; }
+  .one:last-child text { fill: var(--text) !important; }
+  .loop line {
+    fill: none; stroke-width: 3; stroke-linecap: round; opacity: .9;
     stroke-dasharray: 1; stroke-dashoffset: 0;
-    animation: draw .45s ease-out .22s backwards;
+    animation: draw .1s linear backwards;
   }
   @keyframes draw { from { stroke-dashoffset: 1; } }
+  .loop polygon { stroke: var(--panel); stroke-width: 1; stroke-linejoin: round; animation: pop .15s backwards; }
+  @keyframes pop { from { opacity: 0; } }
+  .tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .tools button { padding: 6px 12px; font-size: 13px; }
+  #parity { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--grid); font-size: 14px; line-height: 1.5; }
+  #parity b { font-variant-numeric: tabular-nums; }
   #cycles { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; font-size: 14px; align-items: center; }
   .chip { padding: 3px 10px; border-radius: 999px; border: 2px solid; font-variant-numeric: tabular-nums; }
   .note { color: var(--muted); font-size: 13px; }
@@ -116,7 +139,7 @@
 </head>
 <body>
 <h1>Пятнашки</h1>
-<p class="sub">Клик по костяшке или стрелки на клавиатуре. Справа — матрица перестановки и её циклы.</p>
+<p class="sub">Клик по костяшке или стрелки на клавиатуре. Справа — матрица перестановки и циклы перестановок.</p>
 
 <main>
   <section class="card">
@@ -133,14 +156,23 @@
         <button id="again">Ещё раз</button>
       </div>
     </div>
-    <p class="hint">Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.</p>
+    <div class="modes">
+      <button id="solve" class="secondary">Расставить по местам</button>
+      <label class="switch"><input type="checkbox" id="free"> Свободная замена</label>
+    </div>
+    <p class="hint" id="hint"></p>
   </section>
 
   <section class="card matrix">
-    <h2>Матрица перестановки</h2>
-    <p class="cap">Строки — значение костяшки, столбцы — позиция на поле (E — пустое поле).</p>
+    <div class="tools">
+      <h2>Матрица перестановки</h2>
+      <button id="replay" title="Заново пройти по контурам циклов отрезок за отрезком">▶ Трассировка</button>
+    </div>
+    <p class="cap">Строки — значение костяшки, столбцы — позиция на поле (E — пустое поле). Ход — это обмен столбца E с другим: по горизонтали - с соседним столбцом, по вертикали - с 4-ым справа/слева. 
+        Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.</p>
     <svg id="svg" role="img" aria-label="Матрица перестановки с циклами"></svg>
     <div id="cycles"></div>
+    <div id="parity"></div>
   </section>
 </main>
 
@@ -152,6 +184,8 @@
   const label = v => v === SZ ? 'E' : String(v);
 
   let board, moves, startTime, timer, won;
+  let free = false;  // режим произвольной замены
+  let sel = null;    // выбранная позиция (0..15) в режиме свободной замены
 
   // ---------- доска ----------
   const gridEl = document.getElementById('grid');
@@ -160,10 +194,51 @@
     const t = document.createElement('div');
     t.className = 'tile';
     t.innerHTML = '<div class="face">' + v + '</div>';
-    t.addEventListener('click', () => moveAt(board.indexOf(v)));
     gridEl.appendChild(t);
     tiles[v] = t;
   }
+  const selBox = document.createElement('div');
+  selBox.className = 'selbox';
+  selBox.innerHTML = '<i></i>';
+  gridEl.appendChild(selBox);
+
+  // клик по клетке (в том числе по пустой): обычный ход или выбор/обмен в свободном режиме
+  function cellClick(idx) {
+    if (!free) { moveAt(idx); return; }
+    if (sel === null) sel = idx;
+    else if (sel === idx) sel = null;
+    else {
+      [board[sel], board[idx]] = [board[idx], board[sel]];
+      sel = null;
+      if (won) { won = false; document.getElementById('win').classList.remove('show'); }
+    }
+    render();
+  }
+  gridEl.addEventListener('click', ev => {
+    const r = gridEl.getBoundingClientRect();
+    const c = Math.floor((ev.clientX - r.left) / r.width * N);
+    const row = Math.floor((ev.clientY - r.top) / r.height * N);
+    if (c >= 0 && c < N && row >= 0 && row < N) cellClick(row * N + c);
+  });
+
+  function setFree(on) {
+    free = on; sel = null;
+    document.getElementById('free').checked = on;
+    document.getElementById('board').classList.toggle('free', on);
+    document.getElementById('hint').textContent = on
+      ? 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Ходы и время не считаются.'
+      : 'Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.';
+    render();
+  }
+  function solve() {
+    board = Array.from({ length: SZ }, (_, i) => i + 1);
+    sel = null; moves = 0; startTime = null; won = false;
+    clearInterval(timer); timer = null;
+    document.getElementById('win').classList.remove('show');
+    render();
+  }
+  document.getElementById('free').addEventListener('change', ev => setFree(ev.target.checked));
+  document.getElementById('solve').addEventListener('click', solve);
 
   function neighbors(e) {
     const r = Math.floor(e / N), c = e % N, res = [];
@@ -187,7 +262,7 @@
         prev = e; e = nb;
       }
     } while (isSolved());
-    moves = 0; startTime = null; won = false;
+    moves = 0; startTime = null; won = false; sel = null;
     clearInterval(timer); timer = null;
     document.getElementById('win').classList.remove('show');
     render();
@@ -214,6 +289,7 @@
 
   function win() {
     won = true;
+    renderHighlights();
     clearInterval(timer); showTime();
     document.getElementById('winText').textContent =
       moves + ' ходов за ' + document.getElementById('time').textContent;
@@ -226,6 +302,7 @@
   }
 
   document.addEventListener('keydown', ev => {
+    if (free) return;
     const e = board.indexOf(SZ), r = Math.floor(e / N), c = e % N;
     let idx = -1;
     switch (ev.key) {
@@ -258,13 +335,15 @@
     for (let j = 1; j <= SZ; j++)
       el('rect', { class: 'cell' + (i === j ? ' d' : ''), x: j * S, y: i * S, width: S, height: S });
   }
+  const hlG = el('g', {}); // подсветка столбцов, доступных для транспозиции с E
   const loopsG = el('g', {});
   const onesG = el('g', {});
   const ones = [];
   for (let v = 1; v <= SZ; v++) {
     const g = el('g', { class: 'one' }, onesG);
-    el('circle', { cx: S / 2, cy: S / 2, r: S / 2 - 4 }, g);
-    el('text', { x: S / 2, y: S / 2 + 1, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g).textContent = '1';
+    if (v === SZ) el('rect', { x: 4, y: 4, width: S - 8, height: S - 8, rx: 2 }, g); // пустое поле — квадрат
+    else el('circle', { cx: S / 2, cy: S / 2, r: S / 2 - 4 }, g);
+    el('text', { x: S / 2, y: S / 2 + 1, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g).textContent = v === SZ ? 'E' : '1';
     el('title', {}, g);
     ones[v] = g;
   }
@@ -283,14 +362,70 @@
     return res;
   }
 
-  function loopPath(seq) {
+  // вершины контура в пикселях: единица (r, col) -> диагональ (r, r) -> следующая единица ...
+  function loopPoints(seq) {
     const pts = [];
     for (const col of seq) {
       const r = board[col - 1];
       pts.push([col, r], [r, r]); // [столбец, строка]
     }
-    return pts.map((p, i) => (i ? 'L' : 'M') + (p[0] * S + S / 2) + ' ' + (p[1] * S + S / 2)).join(' ') + ' Z';
+    return pts.map(p => [p[0] * S + S / 2, p[1] * S + S / 2]);
   }
+
+  const STEP = 0.1; // секунд на один отрезок
+  function buildLoop(pts, color) {
+    const g = el('g', { class: 'loop' }, loopsG);
+    pts.forEach((a, i) => {
+      const b = pts[(i + 1) % pts.length];
+      const ln = el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], pathLength: 1, stroke: color }, g);
+      ln.style.animationDelay = (0.25 + i * STEP) + 's';
+      // стрелка посередине отрезка, по направлению обхода
+      const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+      const ar = el('polygon', {
+        points: '6,0 -4,-5 -4,5', fill: color,
+        transform: `translate(${(a[0] + b[0]) / 2} ${(a[1] + b[1]) / 2}) rotate(${ang})`
+      }, g);
+      ar.style.animationDelay = (0.25 + i * STEP + 0.06) + 's';
+    });
+    return g;
+  }
+
+  // E можно менять местами только с соседями по полю: это столбцы e±1 (в том же ряду) и e±4
+  function renderHighlights() {
+    hlG.replaceChildren();
+    if (won) return;
+    const e = board.indexOf(SZ);
+    if (free) {
+      if (sel !== null && sel !== e) band(sel, 'hl', 'Выбрана позиция ' + (sel + 1));
+      band(e, 'hl-e', 'Столбец пустого поля E');
+      return;
+    }
+    band(e, 'hl-e', 'Столбец пустого поля E');
+    for (const p of neighbors(e)) {
+      const horiz = Math.abs(p - e) === 1;
+      band(p, 'hl', (horiz ? 'Горизонтальный ход' : 'Вертикальный ход') +
+        ': обмен столбцов ' + (p + 1) + ' и ' + (e + 1) + ' (E)');
+    }
+  }
+  function band(p, cls, tip) {
+    const g = el('g', { class: cls }, hlG);
+    el('rect', { x: (p + 1) * S, y: 0, width: S, height: S }, g);
+    el('rect', { x: (p + 1) * S, y: S, width: S, height: SZ * S }, g);
+    if (tip) el('title', {}, g).textContent = tip;
+  }
+  const colAt = ev => {
+    const r = svg.getBoundingClientRect();
+    return Math.floor((ev.clientX - r.left) / r.width * (SZ + 1)); // 1..16 — столбец, 0 — подписи
+  };
+  const canSwap = col => col >= 1 && (free || (!won && neighbors(board.indexOf(SZ)).includes(col - 1)));
+  svg.addEventListener('click', ev => { const c = colAt(ev); if (canSwap(c)) cellClick(c - 1); });
+  svg.addEventListener('mousemove', ev => { svg.style.cursor = canSwap(colAt(ev)) ? 'pointer' : ''; });
+
+  document.getElementById('replay').addEventListener('click', () => {
+    for (const g of loops.values()) g.remove();
+    loops.clear();
+    render();
+  });
 
   function render() {
     // доска
@@ -302,6 +437,13 @@
     });
     document.getElementById('moves').textContent = moves;
     showTime();
+
+    selBox.classList.toggle('on', sel !== null);
+    if (sel !== null) {
+      selBox.style.setProperty('--r', Math.floor(sel / N));
+      selBox.style.setProperty('--c', sel % N);
+    }
+    renderHighlights();
 
     // циклы
     const cycles = findCycles();
@@ -318,9 +460,10 @@
         continue;
       }
       seq.forEach(v => info[v] = { color });
-      const d = loopPath(seq);
+      const pts = loopPoints(seq);
+      const d = pts.join(';');
       keep.add(d);
-      if (!loops.has(d)) loops.set(d, el('path', { class: 'loop', d, pathLength: 1, stroke: color }, loopsG));
+      if (!loops.has(d)) loops.set(d, buildLoop(pts, color));
       const chip = document.createElement('span');
       chip.className = 'chip';
       chip.style.borderColor = color;
@@ -334,12 +477,31 @@
                                     : 'на своих местах: ' + fixed + ' из ' + SZ;
     chips.appendChild(note);
 
+    // минимальное число транспозиций = n - (число циклов, включая неподвижные точки)
+    // инверсии: пары костяшек, где большая стоит левее меньшей; E не учитывается
+    const tl = board.filter(v => v !== SZ);
+    let inv = 0;
+    for (let i = 0; i < tl.length; i++)
+      for (let j = i + 1; j < tl.length; j++) if (tl[i] > tl[j]) inv++;
+    // для поля 4×4 сборка возможна, если инверсии + номер ряда E снизу нечётны
+    const rowFromBottom = N - Math.floor(board.indexOf(SZ) / N);
+    const solvable = (inv + rowFromBottom) % 2 === 1;
+    const t = SZ - cycles.length;
+    document.getElementById('parity').innerHTML =
+      'Циклов: <b>' + cycles.length + '</b> (длина &gt; 1: <b>' + (cycles.length - fixed) + '</b>)<br>' +
+      'Транспозиций (минимум): <b>' + t + '</b> = ' + SZ + ' − ' + cycles.length + '<br>' +
+      'Чётность: <b>' + (t % 2 === 0 ? 'чётная' : 'нечётная') + '</b><br>' +
+      'Инверсий (без E): <b>' + inv + '</b><br>' +
+      'Собирается обычными ходами: <b>' + (solvable ? 'да' : 'нет') + '</b>';
+
     // единицы и подсветка костяшек
     for (let v = 1; v <= SZ; v++) {
       const col = board.indexOf(v) + 1;
       const g = ones[v], inf = info[v];
       g.style.transform = `translate(${col * S}px, ${v * S}px)`;
-      g.firstChild.setAttribute('fill', inf.fixed ? 'var(--ok)' : inf.color);
+      const clr = inf.fixed ? 'var(--ok)' : inf.color;
+      if (v === SZ) g.firstChild.setAttribute('stroke', clr); // пустое поле: только рамка
+      else g.firstChild.setAttribute('fill', clr);
       g.lastChild.textContent = (v === SZ ? 'Пустое поле' : 'Костяшка ' + v) + ' на позиции ' + col;
       if (v < SZ) {
         tiles[v].classList.toggle('home', !!inf.fixed);
@@ -349,6 +511,7 @@
   }
 
   newGame();
+  setFree(false);
 })();
 </script>
 </body>
