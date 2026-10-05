@@ -220,7 +220,7 @@
       winText: (m, time) => m + ' ' + ruPlural(m, 'ход', 'хода', 'ходов') + ' за ' + time,
       solve: 'Расставить по местам', free: 'Свободная замена',
       hintNormal: 'Можно кликнуть по дальней костяшке в ряду — сдвинется вся цепочка.',
-      hintFree: 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Ходы и время не считаются.',
+      hintFree: 'Свободная замена: кликните две любые клетки (в том числе пустую или столбцы матрицы) — они поменяются местами. Каждая замена считается ходом.',
       matrixTitle: 'Матрица перестановок',
       replay: '▶ Трассировка', replayTip: 'Заново пройти по контурам циклов отрезок за отрезком',
       cap: 'Строки — значение костяшки, столбцы — позиция на поле, [E] — пустое поле. Ход — это сдвиг костяшки по горизонтали или по вертикали. На матрице перестановок сдвиг по горизонтали означает обмен столбца [E] с соседним справа/слева столбцом, сдвиг по вертикали - обмен [E] с 4-ым справа/слева столбцом. Подсвечены допустимые для хода столбцы. Для совершения хода можно кликнуть по подсвеченному столбцу.',
@@ -248,7 +248,7 @@
       winText: (m, time) => m + (m === 1 ? ' move' : ' moves') + ' in ' + time,
       solve: 'Put in order', free: 'Free swap',
       hintNormal: 'You can click a far tile in the row — the whole chain will slide.',
-      hintFree: 'Free swap: click any two squares (including the empty one, or matrix columns) to swap them. Moves and time are not counted.',
+      hintFree: 'Free swap: click any two squares (including the empty one, or matrix columns) to swap them. Each swap counts as a move.',
       matrixTitle: 'Permutations matrix',
       replay: '▶ Trace', replayTip: 'Replay the cycle outlines segment by segment',
       cap: 'Rows are tile values, columns are board positions, [E] is the empty square. A move is a tile sliding horizontally or vertically. On the permutation matrix, a horizontal slide means swapping the [E] column with the adjacent column to the right/left; a vertical slide means swapping [E] with the 4th column to the right/left. The columns allowed for a move are highlighted. Click a highlighted column to make the move.',
@@ -302,6 +302,7 @@
     else {
       [board[sel], board[idx]] = [board[idx], board[sel]];
       sel = null;
+      moves++; // каждая замена — один ход
       if (won) { won = false; document.getElementById('win').classList.remove('show'); }
     }
     render();
